@@ -1,0 +1,528 @@
+{
+  "metadata": {
+    "version": 1
+  },
+  "nodes": [
+    {
+      "node_id": "32867bb1-c576-4cd1-8cc8-84a4094506d5",
+      "type": "SOURCE",
+      "operator": "sagemaker.athena_source_0.1",
+      "parameters": {
+        "dataset_definition": {
+          "datasetSourceType": "Athena",
+          "name": "mbr_no_map",
+          "catalogName": "AwsDataCatalog",
+          "databaseName": "default",
+          "queryString": "select adid, mbr_no from event as evt join order_slim as ord on evt.order_id = ord.ord_no where event_name like 'abx:purchase'",
+          "s3OutputLocation": "s3://sagemaker-ap-northeast-2-029498593638/athena/",
+          "outputFormat": "parquet"
+        }
+      },
+      "trained_parameters": {
+        "query_execution_id": "fe77e327-405e-4fdc-b72b-ba46de1f69cf",
+        "ctas_table_name": "",
+        "ctas_s3_output_location": "s3://sagemaker-ap-northeast-2-029498593638/athena/75e85a026e8e45d4b66358e4012fa9f9/data/"
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "default",
+          "sampling": {
+            "sampling_method": "sample_by_limit",
+            "limit_rows": 50000
+          }
+        }
+      ]
+    },
+    {
+      "node_id": "b87d1597-b631-4153-87fc-c7ee3fc0575d",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.infer_and_cast_type_0.1",
+      "parameters": {},
+      "trained_parameters": {
+        "schema": {
+          "adid": "string",
+          "mbr_no": "long"
+        }
+      },
+      "inputs": [
+        {
+          "name": "default",
+          "node_id": "32867bb1-c576-4cd1-8cc8-84a4094506d5",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "410bb997-de0d-4339-8039-53e1d78e46f7",
+      "type": "SOURCE",
+      "operator": "sagemaker.athena_source_0.1",
+      "parameters": {
+        "dataset_definition": {
+          "datasetSourceType": "Athena",
+          "name": "event_all",
+          "catalogName": "AwsDataCatalog",
+          "databaseName": "default",
+          "queryString": "select * from event where product_id <> ''",
+          "s3OutputLocation": "s3://sagemaker-ap-northeast-2-029498593638/athena/",
+          "outputFormat": "parquet"
+        }
+      },
+      "trained_parameters": {
+        "query_execution_id": "4f470f85-2d9c-434b-9deb-537d645dd834",
+        "ctas_table_name": "",
+        "ctas_s3_output_location": "s3://sagemaker-ap-northeast-2-029498593638/athena/185a9a62d1124e718a92d5f2e8694560/data/"
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "default",
+          "sampling": {
+            "sampling_method": "sample_by_limit",
+            "limit_rows": 50000
+          }
+        }
+      ]
+    },
+    {
+      "node_id": "3e463fd1-052e-480b-b950-0db83f31e5ec",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.infer_and_cast_type_0.1",
+      "parameters": {},
+      "trained_parameters": {
+        "schema": {
+          "adid": "string",
+          "event_name": "string",
+          "event_datetime": "string",
+          "product_id": "string",
+          "order_id": "string"
+        }
+      },
+      "inputs": [
+        {
+          "name": "default",
+          "node_id": "410bb997-de0d-4339-8039-53e1d78e46f7",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "d5f1c8ff-cf9e-4035-8ac7-cdd818a15262",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.custom_pandas_0.1",
+      "parameters": {
+        "code": "# Table is available as variable `df`\nimport pandas as pd\ndf = df.applymap(lambda x: x.replace('\"', ''))\n\ndf.event_datetime = pd.to_datetime(df.event_datetime, infer_datetime_format=True).astype('int')"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "3e463fd1-052e-480b-b950-0db83f31e5ec",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "127034dd-03e5-4373-bdf5-bfbec7a96ad4",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.custom_pandas_0.1",
+      "parameters": {
+        "code": "# Table is available as variable `df`\nimport pandas as pd\ndf.mbr_no = df.mbr_no.astype('str')\ndf = df.applymap(lambda x: x.replace('\"', ''))\n"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "b87d1597-b631-4153-87fc-c7ee3fc0575d",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "373116cb-4df6-4653-b8e4-6c6828543c11",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.join_tables_0.1",
+      "name": "mbr_id_join",
+      "parameters": {
+        "left_column": "adid",
+        "right_column": "adid",
+        "join_type": "inner"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "d5f1c8ff-cf9e-4035-8ac7-cdd818a15262",
+          "output_name": "default"
+        },
+        {
+          "name": "df",
+          "node_id": "127034dd-03e5-4373-bdf5-bfbec7a96ad4",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "9996032a-b19a-41d9-81dc-6bbd17a51069",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.manage_columns_0.1",
+      "parameters": {
+        "operator": "Drop column",
+        "drop_column_parameters": {
+          "column_to_drop": "order_id"
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "373116cb-4df6-4653-b8e4-6c6828543c11",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "2d8c8ec6-d1e0-4c49-b8bd-bb577f8f94a6",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.manage_columns_0.1",
+      "parameters": {
+        "operator": "Drop column",
+        "drop_column_parameters": {
+          "column_to_drop": "adid_1"
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "9996032a-b19a-41d9-81dc-6bbd17a51069",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "2af5bb1b-c60f-4f0e-8e38-aaf4ac5cc5e1",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.manage_columns_0.1",
+      "parameters": {
+        "operator": "Drop column",
+        "drop_column_parameters": {
+          "column_to_drop": "adid_0"
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "2d8c8ec6-d1e0-4c49-b8bd-bb577f8f94a6",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "efda7117-f48c-4dbe-b8a3-6b23425b1292",
+      "type": "VISUALIZATION",
+      "operator": "sagemaker.visualizations.describe_0.1",
+      "parameters": {
+        "name": "summary"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "2af5bb1b-c60f-4f0e-8e38-aaf4ac5cc5e1",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "f04c2dda-97ab-4b46-83f4-91593958ef4a",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.handle_missing_0.1",
+      "parameters": {
+        "operator": "Drop missing",
+        "drop_missing_parameters": {
+          "dimension": "Drop Rows",
+          "drop_rows_parameters": {
+            "input_column": "mbr_no"
+          }
+        },
+        "impute_parameters": {
+          "column_type": "Numeric",
+          "numeric_parameters": {
+            "strategy": "Approximate Median"
+          }
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "2af5bb1b-c60f-4f0e-8e38-aaf4ac5cc5e1",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "c5db1220-f9d1-43c4-b6bb-7d7e61ee787e",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.handle_missing_0.1",
+      "parameters": {
+        "operator": "Drop missing",
+        "drop_missing_parameters": {
+          "dimension": "Drop Rows",
+          "drop_rows_parameters": {
+            "input_column": "product_id"
+          }
+        },
+        "impute_parameters": {
+          "column_type": "Numeric",
+          "numeric_parameters": {
+            "strategy": "Approximate Median"
+          }
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "f04c2dda-97ab-4b46-83f4-91593958ef4a",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "e53d0e1e-5b01-4e8b-a172-8c23ac8aa392",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.format_string_0.1",
+      "parameters": {
+        "operator": "Remove symbols",
+        "remove_symbols_parameters": {
+          "symbols": "\"",
+          "input_column": "adid"
+        },
+        "lower_case_parameters": {}
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "3e463fd1-052e-480b-b950-0db83f31e5ec",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "e100abc1-3454-4df6-9c56-9b9a6f2111cf",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.format_string_0.1",
+      "parameters": {
+        "operator": "Remove symbols",
+        "remove_symbols_parameters": {
+          "symbols": "\"",
+          "input_column": "event_datetime"
+        },
+        "lower_case_parameters": {}
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "e53d0e1e-5b01-4e8b-a172-8c23ac8aa392",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "1778c3fd-7448-4d71-8250-c4f5c464c255",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.join_tables_0.1",
+      "name": "join",
+      "parameters": {
+        "left_column": "adid",
+        "right_column": "adid",
+        "join_type": "inner"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "e100abc1-3454-4df6-9c56-9b9a6f2111cf",
+          "output_name": "default"
+        },
+        {
+          "name": "df",
+          "node_id": "127034dd-03e5-4373-bdf5-bfbec7a96ad4",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "645dd681-ae29-42f0-ac49-e01eec73c058",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.manage_columns_0.1",
+      "parameters": {
+        "operator": "Drop column",
+        "drop_column_parameters": {
+          "column_to_drop": "adid_1"
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "1778c3fd-7448-4d71-8250-c4f5c464c255",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "df139109-c438-4bb8-96d3-d12e36d73e27",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.manage_columns_0.1",
+      "parameters": {
+        "operator": "Drop column",
+        "drop_column_parameters": {
+          "column_to_drop": "adid_0"
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "645dd681-ae29-42f0-ac49-e01eec73c058",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "1d20384e-f2a2-47d4-b83e-93da8224ba88",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.manage_columns_0.1",
+      "parameters": {
+        "operator": "Drop column",
+        "drop_column_parameters": {
+          "column_to_drop": "order_id"
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "df139109-c438-4bb8-96d3-d12e36d73e27",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "1155287c-08cb-4ca6-8c5c-6fb4ec587585",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.custom_pyspark_0.1",
+      "parameters": {
+        "code": "# Table is available as variable `df`\nfrom pyspark.sql.functions import to_timestamp\ndf = df.select('event_name',to_timestamp(df.event_datetime, 'yyyy-MM-dd HH:mm:ss.SSS').alias('timestamp').cast('int'),'product_id','mbr_no')"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "1d20384e-f2a2-47d4-b83e-93da8224ba88",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "d8020c41-c307-4815-9a27-28c4b164d48e",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.custom_pandas_0.1",
+      "parameters": {
+        "code": "# Table is available as variable `df`\ndf = df.loc[:,['event_name','event_datetime','product_id','mbr_no']]"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "1778c3fd-7448-4d71-8250-c4f5c464c255",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    }
+  ]
+}
